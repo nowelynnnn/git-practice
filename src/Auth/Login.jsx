@@ -1,29 +1,101 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loadingSignIn, setLoadingSignIn] = useState(false);
   const [loadingSignUp, setLoadingSignUp] = useState(false);
+  const [error, setError] = useState(null);
+  const [role, setRole] = useState("customers");
+  const navigate = useNavigate();
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
     setLoadingSignIn(true);
+    setError(null);
 
-    setTimeout(() => {
-      setLoadingSignIn(false);
-      alert("Sign in successful!");
-    }, 2000);
+    try {
+      const response = await fetch(
+        `http://localhost:1337/api/${role}?filters[email][$eq]=${email}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch data");
+      }
+
+      if (data.data.length === 0) {
+        setError("Wrong Credentials");
+        return;
+      }
+
+      const user = data.data[0];
+      if (user.password !== password) {
+        setError("Incorrect password.");
+        return;
+      }
+
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      if (role === "admins") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      setError(err.message || "An error occurred while logging in.");
+    }
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     setLoadingSignUp(true);
-
-    setTimeout(() => {
-      setLoadingSignUp(false);
-      document.getElementById("registration_modal").close();
-      alert("Sign up successful!");
-    }, 2000);
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+    const formData = new FormData();
+    const jsonData = {
+      data: {
+        name: name,
+        email: email,
+        password: password,
+      }
+    }
+    const jsonString = JSON.stringify(jsonData);
+    try {
+      const response = await fetch(`http://localhost:1337/api/${role}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonString,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setTimeout(() => {
+          setLoadingSignUp(false);
+          document.getElementById("registration_modal").close();
+          alert("Sign up successful!");
+        }, 2000);
+      } else {
+        const errorData = await response.text(); 
+        alert("Registration failed!");
+        console.error(errorData);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred while registering!");
+    }
+    
   };
 
   return (
@@ -52,7 +124,9 @@ const Login = () => {
                     <path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v.793c.026.009.051.02.076.032L7.674 8.51c.206.1.446.1.652 0l6.598-3.185A.755.755 0 0 1 15 5.293V4.5A1.5 1.5 0 0 0 13.5 3h-11Z" />
                     <path d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
                   </svg>
-                  <input type="text" className="grow" placeholder="Email" />
+                  <input type="text" className="grow" placeholder="Email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}/>
                 </label>
               </div>
               <div className="form-control mb-4">
@@ -73,6 +147,8 @@ const Login = () => {
                     type={showPassword ? "text" : "password"}
                     className="grow"
                     placeholder="Password"
+                    value={password}
+                   onChange={(e) => setPassword(e.target.value)}
                   />
                 </label>
                 <div className="flex items-center mt-4">
@@ -88,9 +164,11 @@ const Login = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <select className="select select-bordered w-1/2">
-                  <option>Customer</option>
-                  <option>Admin</option>
+                <select className="select select-bordered w-1/2"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}>
+                  <option value="customers">Customer</option>
+                  <option value="admins">Admin</option>
                 </select>
                 <button
                   type="submit"
@@ -159,7 +237,9 @@ const Login = () => {
                 >
                   <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z" />
                 </svg>
-                <input type="text" className="grow" placeholder="Name" />
+                <input type="text" className="grow" placeholder="Name" 
+                 value={name}
+                 onChange={(e) => setName(e.target.value)}/>
               </label>
             </div>
             <div className="form-control mb-2">
@@ -173,7 +253,9 @@ const Login = () => {
                   <path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v.793c.026.009.051.02.076.032L7.674 8.51c.206.1.446.1.652 0l6.598-3.185A.755.755 0 0 1 15 5.293V4.5A1.5 1.5 0 0 0 13.5 3h-11Z" />
                   <path d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
                 </svg>
-                <input type="text" className="grow" placeholder="Email" />
+                <input type="text" className="grow" placeholder="Email" 
+                 value={email}
+                 onChange={(e) => setEmail(e.target.value)}/>
               </label>
             </div>
             <div className="form-control mb-2">
@@ -190,7 +272,10 @@ const Login = () => {
                     clipRule="evenodd"
                   />
                 </svg>
-                <input type="password" className="grow" value="password" />
+                <input type="password" className="grow" 
+                 value={password}
+                 onChange={(e) => setPassword(e.target.value)}
+                 />
               </label>
             </div>
             <div className="form-control mb-5">
@@ -207,13 +292,16 @@ const Login = () => {
                     clipRule="evenodd"
                   />
                 </svg>
-                <input type="password" className="grow" value="password" />
+                <input type="password" className="grow" 
+                 value={confirmPassword}
+                 onChange={(e) => setConfirmPassword(e.target.value)}/>
               </label>
             </div>
             <div className="flex gap-2">
-              <select className="select select-bordered w-1/2">
-                <option>Customer</option>
-                <option>Admin</option>
+              <select className="select select-bordered w-1/2" value={role}
+              onChange={(e) => setRole(e.target.value)}>
+                <option  value="customers">Customer</option>
+                <option  value="admins">Admin</option>
               </select>
               <button
                 type="submit"

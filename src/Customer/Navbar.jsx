@@ -2,29 +2,36 @@ import { HiUserCircle } from "react-icons/hi2";
 import { FaShoppingCart } from "react-icons/fa";
 import { TbShoppingCartCheck } from "react-icons/tb";
 import PurchaseHistory from "./PurchaseHistory";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const Navbar = () => {
+  const userDetails = JSON.parse(sessionStorage.getItem("user"));
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [cartItems, setCartItems] = useState([]);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isPurchaseSuccessModalOpen, setIsPurchaseSuccessModalOpen] =
     useState(false);
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Product 1",
-      price: 29.99,
-      quantity: 1,
-      image: "img.png",
-    },
-    {
-      id: 2,
-      name: "Product 2",
-      price: 19.99,
-      quantity: 2,
-      image: "img2.png",
-    },
-  ]);
+
+    useEffect(() => {
+      fetchCartItems();
+    }, []);
+  
+    const fetchCartItems = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:1337/api/carts?filters[user_name][$eq]=${userDetails.name}&_limit=1000`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setCartItems(data.data);
+        } else {
+          console.error("Failed to fetch cart items");
+        }
+      } catch (error) {
+        console.error("Error fetching cart items:", error);
+      }
+    };
 
   const toggleCartModal = () => {
     setIsCartModalOpen(!isCartModalOpen);
@@ -58,10 +65,94 @@ const Navbar = () => {
       .toFixed(2);
   };
 
-  const handleCheckout = () => {
-    toggleCartModal();
-    togglePurchaseSuccessModal();
+
+  const toggleSelection = (productId) => {
+    setSelectedItems((prevSelectedItems) =>
+      prevSelectedItems.includes(productId)
+        ? prevSelectedItems.filter((id) => id !== productId)
+        : [...prevSelectedItems, productId]
+    );
   };
+
+  const handleCheckout = async (e) => {
+    e.preventDefault();
+  
+    const today = new Date();
+    const formattedDate = today.toISOString().split("T")[0];
+    const selectedCartItems = cartItems.filter((item) =>
+      selectedItems.includes(item.id)
+    );
+  
+    for (const item of selectedCartItems) {
+      const cartData = {
+        data: {
+          product_name: item.product_name,
+          quantity: item.quantity,
+          total: item.price * item.quantity,
+          customer_name: item?.user_name || "Guest",
+          date: formattedDate,
+          branch_name: item.branch_name,
+        },
+      };
+  
+      const jsonString = JSON.stringify(cartData);
+  
+      try {
+        const response = await fetch("http://localhost:1337/api/transactions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: jsonString,
+        });
+  
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Item processed:", data);
+        } else {
+          const errorData = await response.text();
+          console.error("Failed to add item:", errorData);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+  
+    handleDelete(selectedCartItems);
+  };
+  
+  const handleDelete = async (items) => {
+    for (const item of items) {
+      try {
+        const response = await fetch(
+          `http://localhost:1337/api/carts/${item.documentId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+  
+        if (response.ok) {
+          const data = await response.json();
+          setCart((prevCart) => prevCart.filter((cartItem) => cartItem.id !== item.id));
+          setSelectedItems((prevSelectedItems) =>
+            prevSelectedItems.filter((id) => id !== item.id)
+          );
+          console.log(`Item with id ${item.id} deleted:`, data);
+        } else {
+          const errorData = await response.text();
+          console.error(`Failed to delete item with id ${item.id}:`, errorData);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    }
+    alert("Checkout successful");
+    window.location.reload();
+  };
+  
 
   return (
     <>
@@ -136,7 +227,12 @@ const Navbar = () => {
                   key={item.id}
                   className="flex justify-between mb-4 border-b pb-4"
                 >
-                  <div className="flex items-center gap-3">
+                  <input
+                  type="checkbox"
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => toggleSelection(item.id)}
+                />
+                  <div className="flex items-center">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -144,37 +240,20 @@ const Navbar = () => {
                     />
                     <div>
                       <h4 className="text-md font-semibold text-gray-800">
-                        {item.name}
+                        {item.product_name}
                       </h4>
                       <p className="text-sm text-gray-500">
-                        Price: ${item.price}
+                        Price: ₱{item.price}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        handleQuantityChange(item.id, parseInt(e.target.value))
-                      }
-                      className="w-12 text-center border border-gray-300 rounded-md p-1"
-                    />
                     <p className="text-lg font-bold text-green-600">
-                      ${(item.price * item.quantity).toFixed(2)}
+                    ₱{(item.price * item.quantity).toFixed(2)}
                     </p>
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-800">
-                Total:
-              </span>
-              <span className="text-xl font-bold text-green-600">
-                ${getTotalPrice()}
-              </span>
             </div>
             <div className="mt-4 flex justify-end gap-4 font-bold">
               <button

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
+  const [categories, setCategories] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const bannerItems = [
@@ -36,11 +37,24 @@ const Dashboard = () => {
     );
   };
 
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("http://localhost:1337/api/categories");
+        const data = await response.json();
+        setCategories(data.data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       nextSlide();
     }, 1500);
-    // Clear the interval when the component is unmounted
     return () => clearInterval(interval);
   }, []);
 
@@ -48,43 +62,22 @@ const Dashboard = () => {
     <>
       <Navbar />
       <main className="mt-5">
+        {/* Tabs Section */}
         <div role="tablist" className="tabs font-bold">
-          <Link
-            to="/products"
-            role="tab"
-            className="tab text-lg text-green-700 hover:underline"
-          >
-            Beverages
-          </Link>
-          <Link
-            to="/products"
-            role="tab"
-            className="tab text-lg text-green-700 hover:underline"
-          >
-            Frozen
-          </Link>
-          <Link
-            to="/products"
-            role="tab"
-            className="tab text-lg text-green-700 hover:underline"
-          >
-            Snacks & Candies
-          </Link>
-          <Link
-            to="/products"
-            role="tab"
-            className="tab text-lg text-green-700 hover:underline"
-          >
-            Meat & Seafood
-          </Link>
-          <Link
-            to="/products"
-            role="tab"
-            className="tab text-lg text-green-700 hover:underline"
-          >
-            Chips & Biscuits
-          </Link>
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              to="/products"
+              role="tab"
+              className="tab text-lg text-green-700 hover:underline"
+              onClick={() => sessionStorage.setItem('selectedCategory', category.category_name)}
+            >
+              {category.category_name}
+            </Link>
+          ))}
         </div>
+
+        {/* Carousel Section */}
         <div className="container mx-auto px-4 py-7">
           <div className="carousel w-full">
             {bannerItems.map((item, index) => (
@@ -122,6 +115,7 @@ const Dashboard = () => {
               ❯
             </button>
           </div>
+
           <hr />
           <section className="bg-green-500 mb-5 mt-8">
             <div className="container mx-auto px-4">

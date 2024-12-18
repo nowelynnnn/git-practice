@@ -1,28 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import Navbar from "./Navbar";
 import { TbShoppingCartCheck } from "react-icons/tb";
 import { MdAddShoppingCart } from "react-icons/md";
 
 const Products = () => {
-  const products = [
-    {
-      id: 1,
-      name: "Product 1",
-      description: "This is a description for product 1.",
-      price: "$29.99",
-      image: "img.png",
-      branch: "Gaisano Mall",
-    },
-    {
-      id: 2,
-      name: "Product 2",
-      description: "This is a description for product 2.",
-      price: "$19.99",
-      image: "dash.png",
-      branch: "Robinson's Mall",
-    },
-  ];
-
+  const selectedCategory = sessionStorage.getItem("selectedCategory");
+  const userDetails = JSON.parse(sessionStorage.getItem("user"));
+  const [products, setProducts] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [cart, setCart] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] =
@@ -30,18 +15,118 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+
+  useEffect(() => {
+    const fetchBranch = async () => {
+      try {
+        const response = await fetch("http://localhost:1337/api/branches");
+        const data = await response.json();
+        setBranches(data.data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchBranch();
+  }, []);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:1337/api/products?filters[category_name][$eq]=${selectedCategory}`
+        );
+        const data = await response.json();
+        setProducts(data.data || []); 
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedCategory]);
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    product.product_name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (!selectedBranchId || product.branch_name === selectedBranchId)
   );
+  
+  
 
-  const handleAddToCart = (product) => {
-    setCart((prevCart) => [...prevCart, { ...product, quantity: 1 }]);
+  const handleAddToCart = async (product) => {
+    const cartData = {
+      data: {
+        product_name: product.product_name,
+        quantity: 1,
+        price: product.product_price,
+        user_name: userDetails.name, 
+        branch_name : product.branch_name,
+        image : product.image,
+      }
+    };
+    const jsonString = JSON.stringify(cartData);
+    try {
+      const response = await fetch("http://localhost:1337/api/carts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", 
+        },
+        body: jsonString,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert("Product added to cart!");
+        console.log(data);
+        window.location.reload();
+      } else {
+        const errorData = await response.text(); 
+        alert("Failed to add to cart!");
+        console.error(errorData);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred while adding to cart!");
+    }
   };
 
-  const handleCheckoutClick = (product) => {
-    setSelectedProduct(product);
-    setIsModalVisible(true);
+  const handleCheckoutClick = async (product) => {
+    const today = new Date();
+    const formattedDate = today.toISOString().split("T")[0];
+    const cartData = {
+      data: {
+        product_name: product.product_name,
+        quantity: 1,
+        total: product.price * quantity,
+        customer_name: userDetails.name,
+        date: formattedDate,
+        branch_name: product.branch_name,
+      }
+    };
+    const jsonString = JSON.stringify(cartData);
+    try {
+      const response = await fetch("http://localhost:1337/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", 
+        },
+        body: jsonString,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert("Product bought successfully");
+        console.log(data);
+        window.location.reload();
+      } else {
+        const errorData = await response.text(); 
+        alert("Failed to add to cart!");
+        console.error(errorData);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("An error occurred while adding to cart!");
+    }
   };
 
   const handleQuantityChange = (e) => {
@@ -73,7 +158,7 @@ const Products = () => {
         <div className="container mx-auto px-8">
           <div className="mb-5 text-center flex justify-between">
             <h2 className="text-2xl font-bold text-center text-green-700">
-              (/*category nga napili*/)
+              {selectedCategory}
             </h2>
             <div className="flex gap-2">
               <label className="input input-bordered flex items-center gap-2">
@@ -97,13 +182,18 @@ const Products = () => {
                   />
                 </svg>
               </label>
-              <select className="select select-bordered w-full max-w-xs">
-                <option disabled selected>
-                  Branches
+              <select
+              className="select select-bordered w-full max-w-xs mb-4"
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(e.target.value)}
+            >
+              <option value="">Branches</option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.branch_name}>
+                  {branch.branch_name}
                 </option>
-                <option>Han Solo</option>
-                <option>Greedo</option>
-              </select>
+              ))}
+            </select>
             </div>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -114,21 +204,18 @@ const Products = () => {
               >
                 <img
                   src={product.image}
-                  alt={product.name}
+                  alt={product.product_name}
                   className="w-full h-48 object-cover rounded-md mb-4"
                 />
                 <h3 className="text-xl font-semibold text-green-700 mb-4">
-                  {product.name}
+                  {product.product_name}
                 </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  {product.description}
-                </p>
                 <p className="text-sm text-gray-600 mb-6">
-                  Available: {product.branch}
+                  Available: {product.branch_name} Branch
                 </p>
                 <div className="flex justify-between">
                   <p className="text-lg font-bold text-green-700 mb-4">
-                    {product.price}
+                  ₱{product.product_price}
                   </p>
                   <span
                     className="text-green-700 cursor-pointer flex gap-1"

@@ -1,37 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { HiUserCircle } from "react-icons/hi2";
 
-const transactionsData = [
-  { date: "2024-12-01", branch: "Branch A", product: "Product 1", amount: 100 },
-  { date: "2024-12-02", branch: "Branch B", product: "Product 2", amount: 200 },
-  { date: "2024-12-03", branch: "Branch A", product: "Product 3", amount: 150 },
-  { date: "2024-12-04", branch: "Branch C", product: "Product 4", amount: 250 },
-  { date: "2024-12-05", branch: "Branch B", product: "Product 5", amount: 300 },
-];
-
 const Admin = () => {
+  const [transactionsData, setTransactionsData] = useState([]); 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("All");
 
-  // Filter transactions based on search term and branch
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const response = await fetch("http://localhost:1337/api/transactions");
+        if (!response.ok) {
+          throw new Error("Failed to fetch transactions");
+        }
+        const data = await response.json();
+        setTransactionsData(data.data || []); 
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        setTransactionsData([]);
+      }
+    };
+
+    fetchTransactions();
+    console.log(totalSalesByBranch);
+  }, []);
+
   const filteredTransactions = transactionsData.filter((transaction) => {
-    const matchesSearch = transaction.product
+    const matchesSearch = transaction.product_name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesBranch =
-      selectedBranch === "All" || transaction.branch === selectedBranch;
+      selectedBranch === "All" || transaction.branch_name === selectedBranch;
     return matchesSearch && matchesBranch;
   });
 
-  // Compute top sales by branch
-  const topBranches = transactionsData.reduce((acc, transaction) => {
-    acc[transaction.branch] = acc[transaction.branch]
-      ? acc[transaction.branch] + transaction.amount
-      : transaction.amount;
+
+  const totalSalesByBranch = transactionsData.reduce((acc, transaction) => {
+    const total = parseFloat(transaction.total); 
+    if (!isNaN(total)) {
+      acc[transaction.branch_name] = acc[transaction.branch_name]
+        ? acc[transaction.branch_name] + total
+        : total;
+    }
     return acc;
   }, {});
-
-  const sortedBranches = Object.entries(topBranches).sort(
+  
+  const sortedBranches = Object.entries(totalSalesByBranch).sort(
     (a, b) => b[1] - a[1]
   );
 
@@ -83,10 +97,10 @@ const Admin = () => {
               className="select select-bordered select-success w-full md:w-auto"
             >
               <option value="All">All Branches</option>
-              {Array.from(new Set(transactionsData.map((t) => t.branch))).map(
-                (branch) => (
-                  <option key={branch} value={branch}>
-                    {branch}
+              {Array.from(new Set(transactionsData.map((t) => t.branch_name))).map(
+                (branch_name) => (
+                  <option key={branch_name} value={branch_name}>
+                    {branch_name}
                   </option>
                 )
               )}
@@ -94,54 +108,55 @@ const Admin = () => {
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="col-span-1 lg:col-span-2">
-            <div className="bg-white shadow-xl rounded-lg p-5">
-              <div className="p-4 border-b bg-base-100">
-                <h2 className="text-lg font-semibold text-success">
-                  Transaction History
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="table table-zebra w-full">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Branch</th>
-                      <th>Product</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTransactions.length > 0 ? (
-                      filteredTransactions.map((transaction, index) => (
-                        <tr key={index}>
-                          <td>{transaction.date}</td>
-                          <td>{transaction.branch}</td>
-                          <td>{transaction.product}</td>
-                          <td>${transaction.amount.toFixed(2)}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="4" className="text-center text-gray-500">
-                          No transactions found.
-                        </td>
+        <div className="col-span-1 lg:col-span-2">
+          <div className="bg-white shadow-xl rounded-lg p-5">
+            <div className="p-4 border-b bg-base-100">
+              <h2 className="text-lg font-semibold text-success">
+                Transaction History
+              </h2>
+            </div>
+            <div className="overflow-x-auto" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              <table className="table table-zebra w-full">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Product</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.length > 0 ? (
+                    filteredTransactions.map((transaction, index) => (
+                      <tr key={index}>
+                        <td>{transaction.date}</td>
+                        <td>{transaction.branch_name}</td>
+                        <td>{transaction.product_name}</td>
+                        <td>${transaction.total}</td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center text-gray-500">
+                        No transactions found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+        </div>
+
 
           <div className="bg-white shadow-xl rounded-lg">
             <div className="p-4 border-b bg-base-100">
               <h2 className="text-lg font-semibold text-success">
-                Top Sales by Branch
+                Total Sales by Branch
               </h2>
             </div>
             <div className="p-4 space-y-4">
-              {sortedBranches.slice(0, 3).map(([branch, total], index) => (
+              {sortedBranches.map(([branch, total], index) => (
                 <div
                   key={branch}
                   className="card bg-base-100 border border-gray-200 shadow-sm"
@@ -151,7 +166,7 @@ const Admin = () => {
                       {index + 1}. {branch}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Total Sales: ${total.toFixed(2)}
+                      Total Sales: ${total}
                     </p>
                   </div>
                 </div>
