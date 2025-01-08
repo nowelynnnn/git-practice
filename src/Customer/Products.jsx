@@ -196,6 +196,8 @@ const Products = () => {
             </select>
             </div>
           </div>
+
+          
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredProducts.map((product) => (
               <div
@@ -210,6 +212,9 @@ const Products = () => {
                 <h3 className="text-xl font-semibold text-green-700 mb-4">
                   {product.product_name}
                 </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Net Content: {product.net_content} 
+                </p>
                 <p className="text-sm text-gray-600 mb-6">
                   Available: {product.branch_name} Branch
                 </p>

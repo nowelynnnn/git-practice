@@ -49,6 +49,8 @@ const Admin = () => {
     (a, b) => b[1] - a[1]
   );
 
+
+      // HEADING
   return (
     <>
       <div className="navbar bg-green-500 px-5">
@@ -80,10 +82,14 @@ const Admin = () => {
         </div>
       </div>
 
+
       <div className="p-6 bg-base-200 min-h-screen space-y-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center">
           <h1 className="text-3xl font-bold text-green-800">Sales Dashboard</h1>
+
+          {/* SEARCH BAR */}
           <div className="mt-4 md:mt-0 flex gap-2">
+
             <input
               type="text"
               placeholder="Search products..."
@@ -91,6 +97,8 @@ const Admin = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input input-bordered input-success w-full md:w-60"
             />
+
+            {/* SELECT BRANCH */}
             <select
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
@@ -105,8 +113,12 @@ const Admin = () => {
                 )
               )}
             </select>
+
           </div>
         </div>
+
+
+            {/* TRANSACRTION HISTORY */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="col-span-1 lg:col-span-2">
           <div className="bg-white shadow-xl rounded-lg p-5">
@@ -115,6 +127,8 @@ const Admin = () => {
                 Transaction History
               </h2>
             </div>
+
+            {/* TRANSACRION TABLE */}
             <div className="overflow-x-auto" style={{ maxHeight: "60vh", overflowY: "auto" }}>
               <table className="table table-zebra w-full">
                 <thead>
@@ -125,6 +139,8 @@ const Admin = () => {
                     <th>Amount</th>
                   </tr>
                 </thead>
+
+                {/* TRANSACTION CONTENT FROM CUSTOMER BY BRANCH */}
                 <tbody>
                   {filteredTransactions.length > 0 ? (
                     filteredTransactions.map((transaction, index) => (
@@ -132,7 +148,7 @@ const Admin = () => {
                         <td>{transaction.date}</td>
                         <td>{transaction.branch_name}</td>
                         <td>{transaction.product_name}</td>
-                        <td>${transaction.total}</td>
+                        <td>P{transaction.total}</td>
                       </tr>
                     ))
                   ) : (
@@ -144,17 +160,20 @@ const Admin = () => {
                   )}
                 </tbody>
               </table>
+
             </div>
           </div>
         </div>
 
-
+              {/* TOTAL SALES BY BRANCH */}
           <div className="bg-white shadow-xl rounded-lg">
             <div className="p-4 border-b bg-base-100">
               <h2 className="text-lg font-semibold text-success">
                 Total Sales by Branch
               </h2>
             </div>
+
+            
             <div className="p-4 space-y-4">
               {sortedBranches.map(([branch, total], index) => (
                 <div
@@ -162,11 +181,11 @@ const Admin = () => {
                   className="card bg-base-100 border border-gray-200 shadow-sm"
                 >
                   <div className="card-body">
-                    <h3 className="card-title text-secondary">
+                    <h3 className="card-title text-bold-black">
                       {index + 1}. {branch}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Total Sales: ${total}
+                      Total Sales: P{total}
                     </p>
                   </div>
                 </div>
@@ -176,6 +195,7 @@ const Admin = () => {
         </div>
       </div>
 
+            {/* FOOTER */}
       <footer className="bg-base-300 py-6 mt-3">
         <div className="container mx-auto text-center font-bold">
           <p className="text-sm">
